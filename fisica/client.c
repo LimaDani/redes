@@ -1,39 +1,58 @@
-/* Referencia: http://www.programminglogic.com/example-of-client-server-program-in-c-using-sockets-and-tcp/ */
 
-#include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <string.h>
+/* Referencia antiga: http://www.programminglogic.com/example-of-client-server-program-in-c-using-sockets-and-tcp/ 
+   Referência atual:  http://www.binarytides.com/server-client-example-c-sockets-linux/
+*/
 
-int main(){
-  int clientSocket;
-  char buffer[1024];
-  struct sockaddr_in serverAddr;
-  socklen_t addr_size;
-
-  /*---- Create the socket. The three arguments are: ----*/
-  /* 1) Internet domain 2) Stream socket 3) Default protocol (TCP in this case) */
-  clientSocket = socket(PF_INET, SOCK_STREAM, 0);
-  
-  /*---- Configure settings of the server address struct ----*/
-  /* Address family = Internet */
-  serverAddr.sin_family = AF_INET;
-  /* Set port number, using htons function to use proper byte order */
-  serverAddr.sin_port = htons(7891);
-  /* Set IP address to localhost */
-  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  /* Set all bits of the padding field to 0 */
-  memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
-
-  /*---- Connect the socket to the server using the address struct ----*/
-  addr_size = sizeof serverAddr;
-  connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size);
-
-  /*---- Read the message from the server into the buffer ----*/
-  recv(clientSocket, buffer, 1024, 0);
-
-  /*---- Print the received message ----*/
-  printf("Data received: %s",buffer);   
-
-  return 0;
+#include<stdio.h>     /*printf*/
+#include<string.h>    /*strlen*/
+#include<sys/socket.h>/*socket*/
+#include<arpa/inet.h> /*inet_addr*/
+ 
+int main(int argc , char *argv[]){
+    int sock;
+    struct sockaddr_in server;
+    char message[1000], server_reply[2000];
+     
+    /*Create socket*/
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1)
+    	printf("Could not create socket");
+    puts("Socket created");
+     
+    server.sin_addr.s_addr = inet_addr("172.16.2.87");
+    server.sin_family = AF_INET;
+    server.sin_port = htons(8888);
+ 
+    /*Connect to remote server*/
+    if (connect(sock,(struct sockaddr *)&server, sizeof(server)) < 0){
+        perror("connect failed. Error");
+        return 1;
+    }
+     
+    puts("Connected\n");
+     
+    /*keep communicating with server*/
+    while(1){
+        printf("Enter message: ");
+        /*scanf("%s", message);*/
+		gets(message);
+		fflush(stdin);
+         
+        /*Send some data*/
+        if(send(sock, message, strlen(message)+1, 0) < 0){
+            puts("Send failed");
+            return 1;
+        }
+         
+        /*Receive a reply from the server*/
+        if(recv(sock, server_reply, 2000, 0) < 0){
+            puts("recv failed");
+            break;
+        }
+        puts("Server reply:");
+		
+        puts(server_reply);
+    }  
+    close(sock);
+    return 0;
 }
