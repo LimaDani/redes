@@ -1,9 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
-#include "physical.h"
+
+#define FRAME "frame.hex"
 
 void error(char *msg)
 {
@@ -11,50 +14,105 @@ void error(char *msg)
     exit(0);
 }
 
+/* Tabela de conversao char -> Hex*/
+char c2h[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        'A', 'B', 'C', 'D', 'E', 'F'};
+
+/* Criador de colisoes */
+int checkColiision(){       
+
+    int number = rand() % 100;     
+    if(number >= 10 && number <=30){
+        int sleepingTime = rand() % 10;         
+        sleep(sleepingTime);
+        /* TODO: Registrar colisao */
+        return -1;
+    }
+    
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
-    int sockfd, portno, n;
+    int sockfd, port, n;
     int tmq;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
+    struct sockaddr_in server;
+    struct hostent *hostname;
 
-    char buffer[256];
-    if (argc < 3) {
-       fprintf(stderr,"usage %s hostname port\n", argv[0]);
+    /* MAC source */
+    char msource[13]; 
+
+    /* MAC destination*/
+    char mdest[13];
+
+    int i;
+    int length;
+    char* message;
+    
+    FILE* frame;
+       
+    if (argc < 4) {
+       fprintf(stderr,"[ INFO ] Usage: %s [HOSTNAME] [PORT] \"[MESSAGE]\"\n", argv[0]);
        exit(0);
     }
-    portno = atoi(argv[2]);
+
+    /* Tratando parametros */
+    hostname = gethostbyname(argv[1]);
+    port = atoi(argv[2]);
+
+    length = strlen(argv[3]);
+    message = (char*)malloc(sizeof(char)*length*2);
+    for(i=0; i<length; i++){
+        message[2*i]     = c2h[argv[3][i]/16];
+        message[2*i + 1] = c2h[argv[3][i]%16];
+    }
+
+    /* Abrindo socket */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
-    server = gethostbyname(argv[1]);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
+
+    if(sockfd < 0){
+        printf("[ ERRO ] %d\n", __LINE__);
+        return 1;
+    }
+
+    if(hostname == NULL) {
+        fprintf(stderr,"[ ERRO ] %d\n", __LINE__);
         exit(0);
     }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) 
-        error("ERROR connecting");
-      
+
+    server.sin_family = AF_INET;
+    bcopy((char *)hostname->h_addr,
+        (char *)&server.sin_addr.s_addr,
+        hostname->h_length
+    );
+
+    server.sin_port = htons(port);
+    if(connect(sockfd,(struct sockaddr *)&server,sizeof(server)) < 0){
+        printf("[ ERRO ] %d\n",__LINE__);
+    }
+
+    /* TODO: MAC destino e MAC de origem fake */
+    strcpy(mdest, "3A971A178FF2");
+    strcpy(msource, "E13C86911813");
+
+    /* Escrevendo frame em arquivo */
+    frame = fopen(FRAME, "w");
+    fwrite(msource, sizeof(char), 12, frame);
+    fwrite(mdest, sizeof(char), 12, frame);
+    fwrite(message, sizeof(char), length*2, frame);
+ 
     write(sockfd,"TMQ", 3);
     read(sockfd, &tmq, sizeof(int));
-    printf("TMQ: %d\n", tmq);
+    printf("[ INFO ] Solicitado e recebido TMQ: %d\n", tmq);
 
-    printf("Please enter the message: ");
-    bzero(buffer,256);
-    fgets(buffer,255,stdin);
-
-    //verifica colisoes antes de efetuar escrita    
+    /* Enviando frame */
     do{
-        //trecho repetido enquanto tentativa gerar colisoes
-    }
-    while(checkColiision() != 0);
-
+    
+        /* TODO: Enviar mensagem em secoes de TMQ bytes */
+    
+    }while(checkColision() != 0);
+ 
+    /*
     n = write(sockfd,buffer,strlen(buffer));
     if (n < 0) 
          error("ERROR writing to socket");
@@ -63,5 +121,7 @@ int main(int argc, char *argv[])
     if (n < 0) 
          error("ERROR reading from socket");
     printf("%s\n",buffer);
+    */
+
     return 0;
 }
