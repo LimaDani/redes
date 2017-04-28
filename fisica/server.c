@@ -57,12 +57,10 @@ int main(int argc, char *argv[])
         if(sockfd2 < 0){
             printf("[ ERRO ] %d\n", __LINE__);
         }
-    
-        bzero(buffer,256);
-        
+     
         while((n = read(sockfd2, buffer, tmq)) > 0){
             printf("[ INFO ] Lido %d bytes\n", n);
-            if(strcmp(buffer, "TMQ") == 0){
+            if(strncmp(buffer, "TMQ", 3) == 0){
                 write(sockfd2, &tmq, sizeof(int));
                 printf("[ INFO ] TMQ (%d) solicitado e enviado. \n", tmq);
             }else{
@@ -71,6 +69,7 @@ int main(int argc, char *argv[])
                 printf("[ INFO ] Salvo no arquivo de output.\n");
                 write(sockfd2,"OK", 2);
             }
+            bzero(buffer,256);
         }
     }
     return 0; 
