@@ -19,11 +19,13 @@ char c2h[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
         'A', 'B', 'C', 'D', 'E', 'F'};
 
 /* Criador de colisoes */
-int checkColiision(){       
+int checkColision(){       
 
-    int number = rand() % 100;     
+    int number = rand() % 100;
+    /* Intervalo de colisao */
     if(number >= 10 && number <=30){
-        int sleepingTime = rand() % 10;         
+        int sleepingTime = rand() % 10;  
+        printf("[ INFO ] Colisao detectada. sleep(%d)\n", sleepingTime);
         sleep(sleepingTime);
         /* TODO: Registrar colisao */
         return -1;
@@ -34,7 +36,7 @@ int checkColiision(){
 
 int main(int argc, char *argv[])
 {
-    int sockfd, port, n;
+    int sockfd, port;
     int tmq;
     struct sockaddr_in server;
     struct hostent *hostname;
@@ -48,9 +50,11 @@ int main(int argc, char *argv[])
     int i;
     int length;
     char* message;
-    
-    FILE* frame;
-       
+ 
+    FILE* frame;    
+    char buffer[256];
+    int n;
+
     if (argc < 4) {
        fprintf(stderr,"[ INFO ] Usage: %s [HOSTNAME] [PORT] \"[MESSAGE]\"\n", argv[0]);
        exit(0);
@@ -96,7 +100,7 @@ int main(int argc, char *argv[])
     strcpy(msource, "E13C86911813");
 
     /* Escrevendo frame em arquivo */
-    frame = fopen(FRAME, "w");
+    frame = fopen(FRAME, "wb+");
     fwrite(msource, sizeof(char), 12, frame);
     fwrite(mdest, sizeof(char), 12, frame);
     fwrite(message, sizeof(char), length*2, frame);
@@ -106,12 +110,13 @@ int main(int argc, char *argv[])
     printf("[ INFO ] Solicitado e recebido TMQ: %d\n", tmq);
 
     /* Enviando frame */
-    do{
-    
-        /* TODO: Enviar mensagem em secoes de TMQ bytes */
-    
-    }while(checkColision() != 0);
- 
+    fseek(frame, 0, SEEK_SET);
+    while((n = fread(buffer, sizeof(char), tmq, frame)) > 0){
+        while(checkColision() != 0);
+        write(sockfd, buffer, sizeof(char)*n);
+    }
+    free(message);
+    fclose(frame);
     /*
     n = write(sockfd,buffer,strlen(buffer));
     if (n < 0) 

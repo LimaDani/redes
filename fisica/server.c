@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     listen(sockfd,5);
     client_l = sizeof(client);
     
-    output = fopen(OUTPUT, "ab");
+    output = fopen(OUTPUT, "wb");
 
     while(1){
         sockfd2 = accept(sockfd, (struct sockaddr *) &client, &client_l);
