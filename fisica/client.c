@@ -5,15 +5,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <ctype.h>
 
 #define FRAME "frame.hex"
 #define LOG   "client.log"
 
-void error(char *msg)
-{
-    perror(msg);
-    exit(0);
-}
+#define INTERFACE "/sys/class/net/eth0/address"
 
 /* Tabela de conversao char -> Hex*/
 char c2h[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -60,7 +57,11 @@ int main(int argc, char *argv[])
     FILE* frame;    
     char buffer[256];
     int n;
-    
+   
+    FILE* tmp;
+    int j; 
+    char t;
+
     log = fopen(LOG, "a");
 
     srand(time(NULL));
@@ -111,9 +112,22 @@ int main(int argc, char *argv[])
     fprintf(log, "[ %u ][ INFO ] Conexão aberta com sucesso.\n", (unsigned)time(NULL));
     fflush(log);
 
-    /* TODO: MAC destino e MAC de origem fake */
+    /* TODO: MAC destino fake */
     strcpy(mdest, "3A971A178FF2");
-    strcpy(msource, "E13C86911813");
+
+    /* Lendo MAC de origem */ 
+    tmp = fopen(INTERFACE, "r");
+    if(tmp == NULL){
+        printf("[ ERRO ] %d\n", __LINE__);
+        return 1;
+    }
+    j = 0;
+    while((t = fgetc(tmp))!= EOF && j<12){
+        if(t != ':'){
+            msource[j++] = toupper(t);
+        }
+    }
+    close(tmp);
 
     fprintf(log, "[ %u ][ INFO ] MAC de destino identificado: %s. \n", (unsigned)time(NULL), mdest);
     fprintf(log, "[ %u ][ INFO ] MAC de origem identificado: %s. \n", (unsigned)time(NULL), msource);

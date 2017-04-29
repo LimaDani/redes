@@ -8,12 +8,6 @@
 #define OUTPUT "output.data"
 #define LOG    "server.log"
 
-void error(char *msg)
-{
-    perror(msg);
-    exit(1);
-}
-
 int main(int argc, char *argv[])
 {
     int sockfd, sockfd2;
