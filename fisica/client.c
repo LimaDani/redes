@@ -7,6 +7,7 @@
 #include <netdb.h> 
 
 #define FRAME "frame.hex"
+#define LOG   "client.log"
 
 void error(char *msg)
 {
@@ -18,6 +19,8 @@ void error(char *msg)
 char c2h[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
         'A', 'B', 'C', 'D', 'E', 'F'};
 
+FILE* log;
+
 /* Criador de colisoes */
 int checkColision(){       
 
@@ -27,7 +30,10 @@ int checkColision(){
         int sleepingTime = rand() % 10;  
         printf("[ INFO ] Colisao detectada. sleep(%d)\n", sleepingTime);
         sleep(sleepingTime);
-        /* TODO: Registrar colisao */
+        
+        fprintf(log, "[ %u ][ WARN ] Detectou-se colisão. Dormindo por %d segundos.\n", (unsigned)time(NULL), sleepingTime);
+        fflush(log);
+
         return -1;
     }
     
@@ -42,10 +48,10 @@ int main(int argc, char *argv[])
     struct hostent *hostname;
 
     /* MAC source */
-    char msource[13]; 
+    char msource[13] = {0}; 
 
     /* MAC destination*/
-    char mdest[13];
+    char mdest[13] = {0};
 
     int i;
     int length;
@@ -54,6 +60,10 @@ int main(int argc, char *argv[])
     FILE* frame;    
     char buffer[256];
     int n;
+    
+    log = fopen(LOG, "a");
+
+    srand(time(NULL));
 
     if (argc < 4) {
        fprintf(stderr,"[ INFO ] Usage: %s [HOSTNAME] [PORT] \"[MESSAGE]\"\n", argv[0]);
@@ -63,6 +73,9 @@ int main(int argc, char *argv[])
     /* Tratando parametros */
     hostname = gethostbyname(argv[1]);
     port = atoi(argv[2]);
+
+    fprintf(log, "[ %u ][ INFO ] Procurando se conectar em %s:%d.\n", (unsigned)time(NULL), argv[1], port);
+    fflush(log);
 
     length = strlen(argv[3]);
     message = (char*)malloc(sizeof(char)*length*2);
@@ -94,10 +107,17 @@ int main(int argc, char *argv[])
     if(connect(sockfd,(struct sockaddr *)&server,sizeof(server)) < 0){
         printf("[ ERRO ] %d\n",__LINE__);
     }
+ 
+    fprintf(log, "[ %u ][ INFO ] Conexão aberta com sucesso.\n", (unsigned)time(NULL));
+    fflush(log);
 
     /* TODO: MAC destino e MAC de origem fake */
     strcpy(mdest, "3A971A178FF2");
     strcpy(msource, "E13C86911813");
+
+    fprintf(log, "[ %u ][ INFO ] MAC de destino identificado: %s. \n", (unsigned)time(NULL), mdest);
+    fprintf(log, "[ %u ][ INFO ] MAC de origem identificado: %s. \n", (unsigned)time(NULL), msource);
+    fflush(log);
 
     /* Escrevendo frame em arquivo */
     frame = fopen(FRAME, "wb+");
@@ -114,19 +134,11 @@ int main(int argc, char *argv[])
     while((n = fread(buffer, sizeof(char), tmq, frame)) > 0){
         while(checkColision() != 0);
         write(sockfd, buffer, sizeof(char)*n);
+        fprintf(log, "[ %u ][ INFO ] Enviando quadro de %d bytes. \n", (unsigned)time(NULL), n);
+        fflush(log);
     }
     free(message);
     fclose(frame);
-    /*
-    n = write(sockfd,buffer,strlen(buffer));
-    if (n < 0) 
-         error("ERROR writing to socket");
-    bzero(buffer,256);
-    n = read(sockfd,buffer,255);
-    if (n < 0) 
-         error("ERROR reading from socket");
-    printf("%s\n",buffer);
-    */
 
     return 0;
 }
