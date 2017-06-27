@@ -1,4 +1,4 @@
-# Camada de Transporte - cliente
+# Camada de Transporte - Cliente
 # Material de consulta Daniele: http://www.clubedohardware.com.br/artigos
 # /redes/como-o-protocolo-tcp-ip-funciona-parte-1-r34823/?nbcpage=4
 
@@ -37,7 +37,7 @@ while True:
         origport = os.getpid()
         destport = 8080
         
-        data = "Porta origem:" + str(origport) + ", Porta destino:" + str(destport)
+        data = "Porta origem: " + str(origport) + ", Porta destino: " + str(destport)
         data = data + ',' + 'seq:00, ack:00, data:' + rawdata;
         print >>sys.stderr, 'Data:\n\t"%s"' % data
 
@@ -82,9 +82,8 @@ while True:
         sockfd = os.fdopen(appl_sock.fileno())
         sockfd.flush()
 
-        # Apenas para fechar a conexão...
-        # data = appl_sock.recv(MAX_BUF)
-        print >>sys.stderr, '\n\n Fechando conexao...\n\n\n'
+        # Fechando a conexao
+        print >>sys.stderr, '\n\nFechando conexao...\n\n\n'
         net_sock.close()
     finally:
         # Limpa a conexão
