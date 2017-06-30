@@ -1,69 +1,87 @@
-/* Referencia antiga: http://www.programminglogic.com/example-of-client-server-program-in-c-using-sockets-and-tcp/ 
-   Referência atual:  http://www.binarytides.com/server-client-example-c-sockets-linux/
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
+#include <sys/types.h> 
+#include <sys/socket.h>
+#include <netinet/in.h>
 
-   Server:
-    1. Create socket
-	2. Bind to address and port
-	3. Put in listening mode
-	4. Accept connections and process there after.
-*/
+#define OUTPUT "output.data"
+#define LOG    "server.log"
 
-#include<stdio.h>
-#include<string.h>     /*strlen*/
-#include<sys/socket.h>
-#include<arpa/inet.h> /*inet_addr*/
-#include<unistd.h>    /*write*/
- 
-int main(int argc, char *argv[]){
-    int socket_desc, client_sock, c, read_size;
+int main(int argc, char *argv[])
+{
+    int sockfd, sockfd2;
+    int port, tmq;
     struct sockaddr_in server, client;
-    char client_message[2000];
-     
-    /*Create socket*/
-    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_desc == -1)
-      printf("Could not create socket");
-    puts("Socket created");
-     
-    /*Prepare the sockaddr_in structure*/
+    int client_l;
+
+    char buffer[256];
+    int n;
+
+    FILE* output;
+    FILE* log;
+    
+    if (argc < 3){
+        fprintf(stderr,"[ INFO ] Usage: %s [PORT] [TMQ]\n", argv[0]);
+        exit(1);
+    }
+    
+    /* Abrindo arquivo de LOG */
+    log = fopen(LOG, "a");
+    fprintf(log, "[ %u ][ INFO ] Iniciou-se o servidor.\n", (unsigned)time(NULL));
+    fflush(log);
+
+    /* Criando socket */
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0){
+        printf("[ ERRO ] %d\n", __LINE__);
+    }
+
+    port = atoi(argv[1]);
+    tmq  = atoi(argv[2]);
+    fprintf(log, "[ %u ][ INFO ] TMQ estabelecido: %d.\n", (unsigned)time(NULL), tmq);
+    fflush(log);
+
     server.sin_family      = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port        = htons(8888);
-     
-    /*Bind*/
-    if( bind(socket_desc,(struct sockaddr *)&server, sizeof(server)) < 0){
-        perror("bind failed. Error");
-        return 1;
+    server.sin_port        = htons(port);
+    
+    if(bind(sockfd, (struct sockaddr *) &server, sizeof(server)) < 0){
+        printf("[ ERRO ] %d\n", __LINE__);
     }
-    puts("bind done");
-     
-    /*Listen*/
-    listen(socket_desc, 3);
-     
-    /*Accept and incoming connection*/
-    puts("Waiting for incoming connections...");
-    c = sizeof(struct sockaddr_in);
-     
-    /* Accept connection from an incoming client*/
-    client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c);
-    if (client_sock < 0){
-        perror("accept failed");
-        return 1;
+    
+    listen(sockfd,5);
+    client_l = sizeof(client);
+    
+    output = fopen(OUTPUT, "wb");
+
+    while(1){
+        sockfd2 = accept(sockfd, (struct sockaddr *) &client, &client_l);
+        if(sockfd2 < 0){
+            printf("[ ERRO ] %d\n", __LINE__);
+        }
+ 
+        fprintf(log, "[ %u ][ INFO ] Conexão estabelecida.\n", (unsigned)time(NULL));
+        fflush(log);
+
+        while((n = read(sockfd2, buffer, tmq)) > 0){
+            printf("[ INFO ] Lido %d bytes\n", n);
+            fprintf(log, "[ %u ][ INFO ] Recebeu quadro de %d bytes.\n", (unsigned)time(NULL), n);
+            fflush(log);
+
+            if(strncmp(buffer, "TMQ", 3) == 0){
+                write(sockfd2, &tmq, sizeof(int));
+                printf("[ INFO ] TMQ (%d) solicitado e enviado. \n", tmq);
+                fprintf(log, "[ %u ][ INFO ] Cliente solicitou TMQ.\n", (unsigned)time(NULL));
+                fflush(log);
+            }else{
+                fwrite(buffer, sizeof(char), n, output);
+                fflush(output);
+                printf("[ INFO ] Salvo no arquivo de output.\n");
+                write(sockfd2,"OK", 2);
+            }
+            bzero(buffer,256);
+        }
     }
-    puts("Connection accepted");
-     
-    /*Receive a message from client*/
-    while( (read_size = recv(client_sock, client_message, 2000, 0)) > 0 ){
-        /*Send the message back to client*/
-        write(client_sock ,"Connection made", strlen(client_message));
-    }
-     
-    if(read_size == 0){
-        puts("Client disconnected");
-        fflush(stdout);
-    }
-    else if(read_size == -1)
-        perror("recv failed");
-     
     return 0;
 }
